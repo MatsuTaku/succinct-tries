@@ -1,0 +1,19 @@
+include/
+lib/
+sdsl-lite-2.1.1/
+
+### https://raw.github.com/github/gitignore/cdd9e946da421758c6f42c427c7bc65c8326155d/CMake.gitignore
+
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Testing
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps
+
+
