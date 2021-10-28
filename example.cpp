@@ -1,6 +1,8 @@
-#include "louds.hpp"
+//#include "louds.hpp"
+#include "dfuds.hpp"
 
-int main() {
+template<typename D>
+void test_string_collection() {
   std::vector<std::string> keys = {
       "aa",
       "ab",
@@ -9,12 +11,17 @@ int main() {
       "cb",
       "cc",
   };
-  strie::Louds louds(keys.begin(), keys.end());
-//  louds.print_for_debug();
+  D d(keys.begin(), keys.end());
+//  d.print_for_debug();
 
   for (auto& key : keys) {
-    if (!louds.contains(key)) {
+    if (!d.contains(key)) {
       std::cerr << key << " is not contained!" << std::endl;
     }
   }
+}
+
+int main() {
+//  test_string_collection<strie::Louds>();
+  test_string_collection<strie::Dfuds>();
 }

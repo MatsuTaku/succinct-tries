@@ -3,6 +3,7 @@
 
 #include <string>
 #include <cstring>
+#include <string_view>
 #include <iterator>
 #include <type_traits>
 #include <cassert>
@@ -13,10 +14,10 @@
 #include <initializer_list>
 #include <iostream>
 
-#include "sdsl/int_vector.hpp"
-#include "sdsl/rank_support.hpp"
-#include "sdsl/select_support.hpp"
-#include "sdsl/util.hpp"
+#include <sdsl/int_vector.hpp>
+#include <sdsl/rank_support.hpp>
+#include <sdsl/select_support.hpp>
+#include <sdsl/util.hpp>
 
 namespace strie {
 
