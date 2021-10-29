@@ -12,11 +12,12 @@ void test_string_collection() {
       "cc",
   };
   D d(keys.begin(), keys.end());
-//  d.print_for_debug();
+  d.print_for_debug();
 
   for (auto& key : keys) {
     if (!d.contains(key)) {
       std::cerr << key << " is not contained!" << std::endl;
+      exit(EXIT_FAILURE);
     }
   }
 }
@@ -24,4 +25,5 @@ void test_string_collection() {
 int main() {
 //  test_string_collection<strie::Louds>();
   test_string_collection<strie::Dfuds>();
+  std::cout << "OK" << std::endl;
 }

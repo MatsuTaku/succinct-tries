@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.17)
 project(succinct-tries)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_FLAGS "-march=native")
 
 set(include_dir ${CMAKE_SOURCE_DIR}/include)
 set(link_dir ${CMAKE_SOURCE_DIR}/lib)
@@ -21,3 +22,4 @@ include_directories(/usr/local/include ${include_dir})
 link_libraries(${link_dir}/libsdsl.a)
 
 add_executable(example example.cpp)
+add_executable(bp_test bp_test.cpp)
