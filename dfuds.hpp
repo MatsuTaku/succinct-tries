@@ -1,5 +1,7 @@
-#ifndef SUCCINCT_TRIES__LOUDS_HPP_
-#define SUCCINCT_TRIES__LOUDS_HPP_
+#ifndef SUCCINCT_TRIES__DFUDS_HPP_
+#define SUCCINCT_TRIES__DFUDS_HPP_
+
+#include "bp.hpp"
 
 #include <string>
 #include <cstring>
@@ -15,26 +17,69 @@
 #include <iostream>
 
 #include <sdsl/int_vector.hpp>
+#include <sdsl/bit_vectors.hpp>
 #include <sdsl/rank_support.hpp>
 #include <sdsl/select_support.hpp>
 #include <sdsl/util.hpp>
 
 namespace strie {
 
-class Louds {
+class Dfuds {
+ public:// for visualization
+  static constexpr bool kLbra = 1;
+  static constexpr bool kRbra = 0;
+  using index_type = size_t;
+ protected:
+  sdsl::bit_vector bv_;
+  sdsl::rank_support_v<kLbra, 1> rankL_;
+  sdsl::select_support_mcl<kRbra, 1> selectR_;
+  BpSupport<> bp_;
+
+  void orchestrate() {
+    sdsl::util::init_support(rankL_, &bv_);
+    sdsl::util::init_support(selectR_, &bv_);
+    bp_.init_support(&bv_, &rankL_);
+  }
+
+ public:
+  Dfuds() {}
+
+  index_type rankR(index_type i) const {
+    return i - rankL_(i);
+  }
+
+  index_type degree(index_type x) const {
+    return selectR_(rankR(x) + 1) - x;
+  }
+
+  index_type child(index_type x, index_type i) const {
+    assert(bv_[x + i] == kLbra);
+    auto deg = degree(x);
+    return bp_.findclose(x + deg - 1 - i) + 1;
+  }
+
+ public:
+  void print_for_debug() const {
+    std::cout << "DFUDS" << std::endl;
+    for (int i = 0; i < bv_.size(); i++)
+      std::cout << bv_[i];
+    std::cout << std::endl;
+  }
+
+};
+
+
+class DfudsTrie : protected Dfuds {
+  using dfuds = Dfuds;
  public:
   using value_type = std::string;
   using char_type = char;
   static constexpr char_type kEndLabel = '\0';
   static constexpr char_type kDelim = '\0';
   static constexpr char_type kRootLabel = '^'; // for visualization
-  using index_type = size_t;
  private:
-  sdsl::bit_vector bv_;
-  sdsl::rank_support_v<1, 1> rank1_;
-  sdsl::select_support_mcl<0, 1> select0_;
   sdsl::bit_vector leaf_;
-  sdsl::rank_support_v<1, 1> rank_leaf_;
+  sdsl::rank_support_v<1, 1> leaf_rank_;
   std::vector<char_type> chars_;
   size_t size_;
 
@@ -52,21 +97,13 @@ class Louds {
         throw std::domain_error("Input string collection is not sorted.");
   }
 
-  index_type _rank0(index_type i) const {
-    return i - rank1_(i);
-  }
-
-  index_type _child(index_type i) const {
-    return select0_(rank1_(i) + 1);
-  }
-
  public:
-  Louds() : size_(0) {}
+  DfudsTrie() : Dfuds(), size_(0) {}
   template<typename It>
-  Louds(It begin, It end) : Louds() {
+  DfudsTrie(It begin, It end) : DfudsTrie() {
     _build(begin, end);
   }
-  Louds(std::initializer_list<value_type> list) : Louds(list.begin(), list.end()) {}
+  DfudsTrie(std::initializer_list<value_type> list) : DfudsTrie(list.begin(), list.end()) {}
 
   size_t size() const { return size_; }
   bool empty() const { return size() == 0; }
@@ -82,18 +119,6 @@ class Louds {
     for (int i = 0; i < bv_.size(); i++)
       std::cout << bv_[i];
     std::cout << std::endl;
-//    std::cout << "rank0" << std::endl;
-//    for (int i = 0; i < bv_.size(); i++)
-//      std::cout << rank0_(i);
-//    std::cout << std::endl;
-//    std::cout << "rank1" << std::endl;
-//    for (int i = 0; i < bv_.size(); i++)
-//      std::cout << rank1_(i);
-//    std::cout << std::endl;
-//    std::cout << "child" << std::endl;
-//    for (int i = 0; i < bv_.size(); i++) if (bv_[i] == 1)
-//      std::cout << _child(i) << ' ';
-//    std::cout << std::endl;
     for (int i = 0; i < chars_.size(); i++)
       std::cout << chars_[i];
     std::cout << std::endl;
@@ -105,7 +130,7 @@ class Louds {
 };
 
 template<typename It>
-void Louds::_build(It begin, It end) {
+void DfudsTrie::_build(It begin, It end) {
   using traits = std::iterator_traits<It>;
   static_assert(std::is_convertible_v<typename traits::value_type, value_type>);
   static_assert(std::is_base_of_v<std::forward_iterator_tag, typename traits::iterator_category>);
@@ -113,64 +138,65 @@ void Louds::_build(It begin, It end) {
   _check_valid_input(begin, end);
 
   bv_.resize(1);
-  bv_[0] = 1;
+  bv_[0] = kLbra;
   chars_.resize(1);
   chars_[0] = kRootLabel;
-  std::queue<std::tuple<It, It, size_t>> qs;
-  qs.emplace(begin, end, 0);
+
   std::vector<char_type> cs;
-  while (!qs.empty()) {
-    auto [b,e,d] = qs.front(); qs.pop();
+  auto dfs = [&](auto& f, It b, It e, size_t d) -> void {
     assert(b != e);
-    cs.clear();
-    bool has_leaf = false;
     auto it = b;
-    if ((*b).size() == d) {
+    bool has_leaf = false;
+    if ((*it).length() == d) {
       has_leaf = true;
       ++it;
     }
+    cs.clear();
+    std::vector<std::tuple<It,It>> ns;
     while (it != e) {
-      auto f = it++;
-      assert(f->length() > d);
-      auto c = (*f)[d];
+      auto t = it;
+      auto c = (*t)[d];
       cs.push_back(c);
+      ++it;
       while (it != e and (*it)[d] == c)
         ++it;
-      qs.emplace(f, it, d+1);
+      ns.emplace_back(t, it);
     }
     size_t t = bv_.size();
-    bv_.resize(t + 1 + cs.size());
-    bv_[t] = 0;
-    chars_.resize(t + 1 + cs.size());
-    chars_[t] = kDelim;
-    for (int i = 0; i < cs.size(); i++) {
-      bv_[t + 1 + i] = 1;
-      chars_[t + 1 + i] = cs[i];
+    bv_.resize(t + cs.size() + 1);
+    chars_.resize(t + cs.size() + 1);
+    for (size_t i = 0; i < cs.size(); i++) {
+      bv_[t + i] = kLbra;
+      chars_[t + i] = cs[i];
     }
+    bv_[t + cs.size()] = kRbra;
+    chars_[t + cs.size()] = kDelim;
     leaf_.resize(leaf_.size()+1);
     leaf_[leaf_.size()-1] = has_leaf;
-  }
-  sdsl::util::init_support(rank1_, &bv_);
-  sdsl::util::init_support(select0_, &bv_);
-  sdsl::util::init_support(rank_leaf_, &leaf_);
-  size_ = rank_leaf_(leaf_.size());
+    for (auto [b,e] : ns)
+      f(f, b, e, d+1);
+  };
+  dfs(dfs, begin, end, 0);
+
+  orchestrate();
+  sdsl::util::init_support(leaf_rank_, &leaf_);
+
 }
 
 template<typename STR>
-bool Louds::contains(STR&& key, index_type len) const {
-  index_type i, idx = 1;
-  for (i = 0; i < len; i++) {
-    idx++;
-    char_type c;
-    while ((c = chars_[idx]) != kDelim and c < key[i])
-      ++idx;
-    if (c != key[i])
+bool DfudsTrie::contains(STR&& key, index_type len) const {
+  index_type idx = 1;
+  for (index_type k = 0; k < len; k++) {
+    index_type i = 0;
+    while (bv_[idx + i] == kLbra and chars_[idx + i] < key[k])
+      i++;
+    if (chars_[idx + i] != key[k])
       return false;
-    idx = _child(idx);
+    idx = dfuds::child(idx, i);
   }
-  return leaf_[_rank0(idx)];
+  return leaf_[dfuds::rankR(idx)];
 }
 
 } // namespace strie
 
-#endif //SUCCINCT_TRIES__LOUDS_HPP_
+#endif //SUCCINCT_TRIES__DFUDS_HPP_
