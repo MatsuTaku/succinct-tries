@@ -60,6 +60,7 @@ class Dfuds {
 
  public:
   void print_for_debug() const {
+    std::cout << "DFUDS" << std::endl;
     for (int i = 0; i < bv_.size(); i++)
       std::cout << bv_[i];
     std::cout << std::endl;

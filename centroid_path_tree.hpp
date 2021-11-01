@@ -151,11 +151,11 @@ class CentroidPathTree : protected Dfuds {
   }
 
   void build(const CentroidPathTreeRaw& raw) {
-    bv_ = sdsl::bit_vector();
-    cs_ = std::vector<char_type>();
-    bl_ = sdsl::bit_vector();
-    bs_ = sdsl::bit_vector();
-    is_ = sdsl::int_vector<>();
+    dfuds::bv_ = decltype(bv_)();
+    bl_ = decltype(bl_)();
+    bs_ = decltype(bs_)();
+    cs_ = decltype(cs_)();
+    is_ = decltype(is_)();
     auto expand = [&](size_t additional) {
       auto newsize = dfuds::bv_.size() + additional;
       dfuds::bv_.resize(newsize);
@@ -164,7 +164,7 @@ class CentroidPathTree : protected Dfuds {
       cs_.resize(newsize);
     };
     expand(1);
-    bv_[0] = kLbra;
+    dfuds::bv_[0] = kLbra;
     cs_[0] = kDelim;
     auto dfs = [&](auto& f, index_type id) -> void {
       const auto& node = raw.nodes_[id];
@@ -200,52 +200,61 @@ class CentroidPathTree : protected Dfuds {
     dfs(dfs, 0);
 
     orchestrate();
-
   }
   template<typename It>
   void build(It begin, It end) {
     build(CentroidPathTreeRaw(begin, end));
   }
 
+ private:
+  static constexpr index_type INVALID = std::numeric_limits<index_type>::max();
+
+  // Transition by index-of-label and head-label
+  index_type go(index_type idx, size_t t, char_type c) const {
+    index_type r = bl_rank1_(idx), b = 0, f;
+    index_type bdeg = bl_rank1_(idx + dfuds::degree(idx)) - r;
+    while (b < bdeg and (f = is_[r+b]) < t) {
+      ++b;
+    }
+    if (b == bdeg or f > t)
+      return INVALID;
+    assert(f == t);
+    index_type i = b == 0 ? 0 : bl_select1_(r+b)+1 - idx;
+    while (cs_[idx+i] != c) {
+      if (bl_[idx+i])
+        return INVALID;
+      ++i;
+    }
+    return dfuds::child(idx, i);
+  };
+
+ public:
   template<typename STR>
   bool contains(const STR& key) const {
     index_type idx = 1;
-    index_type id = 0;
-    int k, d = 0;
-    for (k = 0; k < key.length(); k++) {
-      if (labels_[id][k-d] != key[k]) {
-        index_type r = bl_rank1_(idx), b = 0, f;
-        index_type bdeg = bl_rank1_(idx+dfuds::degree(idx))-r;
-        while (b < bdeg and (f = is_[r+b]) < k-d) {
-          ++b;
-        }
-        if (b == bdeg or f > k-d)
-          return false;
-        assert(f == k-d);
-        index_type i = b == 0 ? 0 : bl_select1_(r+b)+1 - idx;
-        while (cs_[idx+i] != key[k]) {
-          if (bl_[idx+i])
-            return false;
-          ++i;
-        }
-        d = k+1;
-        idx = dfuds::child(idx, i);
-        id = dfuds::rankR(idx);
+    size_t k = 0;
+    while (k < key.length()) {
+      auto& l = labels_[rankR(idx)];
+      size_t len = std::min(l.length(), key.length()-k);
+      size_t t = 0;
+      while (t < len and l[t] == key[k+t])
+        ++t;
+      if (k+t == key.length()) {
+        if (t == l.length())
+          return true;
+        break;
       }
-    }
-    if (labels_[id].length() == k-d)
-      return true;
-    index_type i = bl_select1_(bl_rank1_(idx)+k-d)+1;
-    while (dfuds::bv_[idx+i] == kLbra and cs_[idx + i] != kEndLabel) {
-      if (bl_[idx+i])
+      idx = go(idx, t, key[k+t]);
+      if (idx == INVALID)
         return false;
-      i++;
+      k += t + 1;
     }
-    return true;
+    return labels_[rankR(idx)].empty();
   }
 
   void print_for_debug() const {
     dfuds::print_for_debug();
+    std::cout << "Blast" << std::endl;
     for (size_t i = 0; i < bl_.size(); i++)
       std::cout << bl_[i];
     std::cout<<std::endl;
@@ -255,8 +264,8 @@ class CentroidPathTree : protected Dfuds {
     for (size_t i = 0; i < is_.size(); i++)
       std::cout << is_[i] << ' ';
     std::cout << std::endl;
-    for (auto& k : labels_)
-      std::cout << k << std::endl;
+    for (size_t i = 0; i < labels_.size(); i++)
+      std::cout << i << "] " << labels_[i] << std::endl;
   }
 
 };
