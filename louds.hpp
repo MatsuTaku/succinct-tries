@@ -1,8 +1,6 @@
 #ifndef SUCCINCT_TRIES__LOUDS_HPP_
 #define SUCCINCT_TRIES__LOUDS_HPP_
 
-#include "bp.hpp"
-
 #include <string>
 #include <cstring>
 #include <string_view>
