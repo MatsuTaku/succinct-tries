@@ -25,24 +25,62 @@
 namespace strie {
 
 class Dfuds {
+ public:// for visualization
+  static constexpr bool kLbra = 1;
+  static constexpr bool kRbra = 0;
+  using index_type = size_t;
+ protected:
+  sdsl::bit_vector bv_;
+  sdsl::rank_support_v<kLbra, 1> rankL_;
+  sdsl::select_support_mcl<kRbra, 1> selectR_;
+  BpSupport<> bp_;
+
+  void orchestrate() {
+    sdsl::util::init_support(rankL_, &bv_);
+    sdsl::util::init_support(selectR_, &bv_);
+    bp_.init_support(&bv_, &rankL_);
+  }
+
+ public:
+  Dfuds() {}
+
+  index_type rankR(index_type i) const {
+    return i - rankL_(i);
+  }
+
+  index_type degree(index_type x) const {
+    return selectR_(rankR(x) + 1) - x;
+  }
+
+  index_type child(index_type x, index_type i) const {
+    assert(bv_[x + i] == kLbra);
+    auto deg = degree(x);
+    return bp_.findclose(x + deg - 1 - i) + 1;
+  }
+
+ public:
+  void print_for_debug() const {
+    for (int i = 0; i < bv_.size(); i++)
+      std::cout << bv_[i];
+    std::cout << std::endl;
+  }
+
+};
+
+
+class DfudsTrie : protected Dfuds {
+  using dfuds = Dfuds;
  public:
   using value_type = std::string;
   using char_type = char;
   static constexpr char_type kEndLabel = '\0';
   static constexpr char_type kDelim = '\0';
   static constexpr char_type kRootLabel = '^'; // for visualization
-  static constexpr bool kLbra = 1;
-  static constexpr bool kRbra = 0;
-  using index_type = size_t;
  private:
-  sdsl::bit_vector bv_;
-  sdsl::rank_support_v<kLbra, 1> rankL_;
-  sdsl::select_support_mcl<kRbra, 1> selectR_;
   sdsl::bit_vector leaf_;
   sdsl::rank_support_v<1, 1> leaf_rank_;
   std::vector<char_type> chars_;
   size_t size_;
-  BpSupport<> bp_;
 
  private:
   template<typename It>
@@ -58,26 +96,13 @@ class Dfuds {
         throw std::domain_error("Input string collection is not sorted.");
   }
 
-  index_type _rankR(index_type i) const {
-    return i - rankL_(i);
-  }
-
-  index_type _degree(index_type x) const {
-    return selectR_(_rankR(x) + 1) - x;
-  }
-
-  index_type _child(index_type x, index_type i) const {
-    assert(bv_[x + i] == kLbra);
-    return bp_.findclose(x + _degree(x) - 1 - i) + 1;
-  }
-
  public:
-  Dfuds() : size_(0) {}
+  DfudsTrie() : Dfuds(), size_(0) {}
   template<typename It>
-  Dfuds(It begin, It end) : Dfuds() {
+  DfudsTrie(It begin, It end) : DfudsTrie() {
     _build(begin, end);
   }
-  Dfuds(std::initializer_list<value_type> list) : Dfuds(list.begin(), list.end()) {}
+  DfudsTrie(std::initializer_list<value_type> list) : DfudsTrie(list.begin(), list.end()) {}
 
   size_t size() const { return size_; }
   bool empty() const { return size() == 0; }
@@ -104,7 +129,7 @@ class Dfuds {
 };
 
 template<typename It>
-void Dfuds::_build(It begin, It end) {
+void DfudsTrie::_build(It begin, It end) {
   using traits = std::iterator_traits<It>;
   static_assert(std::is_convertible_v<typename traits::value_type, value_type>);
   static_assert(std::is_base_of_v<std::forward_iterator_tag, typename traits::iterator_category>);
@@ -152,15 +177,13 @@ void Dfuds::_build(It begin, It end) {
   };
   dfs(dfs, begin, end, 0);
 
-  sdsl::util::init_support(rankL_, &bv_);
-  sdsl::util::init_support(selectR_, &bv_);
+  orchestrate();
   sdsl::util::init_support(leaf_rank_, &leaf_);
 
-  bp_.init_support(&bv_, &rankL_);
 }
 
 template<typename STR>
-bool Dfuds::contains(STR&& key, index_type len) const {
+bool DfudsTrie::contains(STR&& key, index_type len) const {
   index_type idx = 1;
   for (index_type k = 0; k < len; k++) {
     index_type i = 0;
@@ -168,9 +191,9 @@ bool Dfuds::contains(STR&& key, index_type len) const {
       i++;
     if (chars_[idx + i] != key[k])
       return false;
-    idx = _child(idx, i);
+    idx = dfuds::child(idx, i);
   }
-  return leaf_[_rankR(idx)];
+  return leaf_[dfuds::rankR(idx)];
 }
 
 } // namespace strie

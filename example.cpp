@@ -1,5 +1,6 @@
 #include "louds.hpp"
 #include "dfuds.hpp"
+#include "centroid_path_tree.hpp"
 
 template<typename D>
 void test_string_collection() {
@@ -24,6 +25,8 @@ void test_string_collection() {
 
 int main() {
 //  test_string_collection<strie::Louds>();
-  test_string_collection<strie::Dfuds>();
+//  test_string_collection<strie::DfudsTrie>();
+//  test_string_collection<strie::CentroidPathTreeRaw>();
+  test_string_collection<strie::CentroidPathTree>();
   std::cout << "OK" << std::endl;
 }
