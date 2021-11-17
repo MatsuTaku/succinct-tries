@@ -1,6 +1,6 @@
-#include "louds.hpp"
-#include "dfuds.hpp"
-#include "centroid_path_tree.hpp"
+#include <strie/louds.hpp>
+#include <strie/dfuds.hpp>
+#include <strie/centroid_path_tree.hpp>
 
 template<typename D>
 void test_string_collection() {

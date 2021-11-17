@@ -1,4 +1,4 @@
-#include "bp.hpp"
+#include <strie/bp.hpp>
 
 #include <iostream>
 #include <vector>

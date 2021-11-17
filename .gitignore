@@ -1,6 +1,9 @@
+# Expanded by SDSL-lite's script
 include/
 lib/
 sdsl-lite-2.1.1/
+
+!src/include/
 
 ### https://raw.github.com/github/gitignore/cdd9e946da421758c6f42c427c7bc65c8326155d/CMake.gitignore
 

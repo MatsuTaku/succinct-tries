@@ -18,8 +18,15 @@ if(NOT EXISTS ${include_dir}/sdsl)
     execute_process(COMMAND ${sdsl_dir}/install.sh ${CMAKE_SOURCE_DIR})
 endif()
 
-include_directories(/usr/local/include ${include_dir})
-link_libraries(${link_dir}/libsdsl.a)
+add_library(strie INTERFACE)
+target_include_directories(strie INTERFACE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/include
+        ${include_dir}
+        )
+target_link_libraries(strie INTERFACE
+        ${link_dir}/libsdsl.a
+        )
 
+link_libraries(strie)
 add_executable(example example.cpp)
 add_executable(bp_test bp_test.cpp)
