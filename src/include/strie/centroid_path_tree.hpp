@@ -21,7 +21,7 @@ class CentroidPathTreeRaw {
     std::map<std::pair<index_type, char_type>, index_type> ch;
     size_t sz;
     Node() = default;
-    Node(const std::string& l) : l(l), sz(1) {}
+    Node(std::string&& l) : l(l), sz(1) {}
   };
   std::vector<Node> nodes_;
   friend class CentroidPathTree;
@@ -84,7 +84,7 @@ class CentroidPathTreeRaw {
         return std::get<0>(chs[l]) > std::get<0>(chs[r]);
       });
       auto par = f(f, std::get<1>(chs[I[0]]), std::get<2>(chs[I[0]]), top, dep+1);
-      for (size_t i = 1; i < chs.size(); i++) {
+      for (size_t i = 1; i < I.size(); i++) {
         auto [sz,cb,ce,c] = chs[I[i]];
         auto cid = f(f, cb, ce, dep, dep+1);
         nodes_[par].ch[{dep-top, c}] = cid;
